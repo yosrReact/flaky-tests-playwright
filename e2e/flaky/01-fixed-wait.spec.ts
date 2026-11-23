@@ -6,8 +6,7 @@ test.describe("Connexion", () => {
     await page.getByLabel("Email").fill("demo@shop.test");
     await page.getByLabel("Mot de passe").fill("demo1234");
     await page.getByRole("button", { name: "Se connecter" }).click();
-    await page.waitForTimeout(500);
-    expect(page.url()).toContain("/shop");
+    await expect(page).toHaveURL("/shop");
     await expect(page.getByRole("heading", { name: "Boutique" })).toBeVisible();
   });
 });

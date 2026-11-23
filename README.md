@@ -1,5 +1,7 @@
 # Mini Shop : terrain de jeu pour les flaky tests
 
+[![E2E Playwright](https://github.com/yosrReact/flaky-tests-playwright/actions/workflows/playwright.yml/badge.svg)](https://github.com/yosrReact/flaky-tests-playwright/actions/workflows/playwright.yml)
+
 Petite application React (Vite + TypeScript) qui sert de support à un projet pratique :
 reproduire les causes classiques de tests flaky avec Playwright, les observer en CI, puis les corriger.
 
@@ -13,6 +15,17 @@ npm run dev
 Puis ouvrir http://localhost:5180.
 
 Compte de démo : `demo@shop.test` / `demo1234`
+
+## Lancer les tests
+
+```bash
+npx playwright install chromium
+npm run test:e2e          # toute la suite
+npm run test:e2e:ui       # mode UI, pas à pas
+npx playwright test --repeat-each=20   # vérifier la stabilité
+```
+
+Playwright démarre l'app tout seul (`webServer` dans `playwright.config.ts`).
 
 ## Parcours
 
@@ -39,20 +52,31 @@ L'app est écrite normalement, mais elle contient les ingrédients qui rendent l
 | État en mémoire      | Session et panier perdus au rechargement                                                   | Des tests qui comptent sur l'état laissé par un autre test |
 | Format des prix      | `Intl.NumberFormat('fr-FR')` utilise des espaces insécables                                | Une comparaison de texte avec un espace normal             |
 
-## Flaky tests: reproduce, diagnose, fix
+Les quatre premiers sont reproduits et corrigés ci-dessous.
 
-| #   | Cause           | Symptom                                 | Evidence                                         | Fix                                      | Commit |
-| --- | --------------- | --------------------------------------- | ------------------------------------------------ | ---------------------------------------- | ------ |
-| 01  | Fixed wait      | ~57% failures, "flaky" on CI            | Trace: button still "Connexion…" at assertion    | Web-first assertion                      | <lien> |
-| 02  | Date dependency | Passes on weekdays, fails on weekends   | `page.clock` set to Saturday → 8,99 €            | `page.clock.setFixedTime` + weekend test | <lien> |
-| 03  | External API    | Fails when dummyjson is down or changes | `route.abort()` → error message                  | `page.route` mock in fixture             | <lien> |
-| 04  | Dependent tests | Fails in parallel or when run alone     | Passes with `--workers=1`, fails with `-g "B :"` | Each test sets up its own state          | <lien> |
+## Flaky tests : reproduire, diagnostiquer, corriger
 
-## Process
+| #   | Cause                 | Symptôme                                                | Preuve                                                         | Correction                                            | Commit                                                                                                    |
+| --- | --------------------- | ------------------------------------------------------- | -------------------------------------------------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| 01  | Attente fixe          | Environ 57 % d'échecs, statut « flaky » en CI           | Trace : le bouton affiche encore « Connexion… » à l'assertion  | Assertion web-first (`toHaveURL`)                     | [b7892bd](https://github.com/yosrReact/flaky-tests-playwright/commit/b7892bd8a8b0bca4dca5094bc9f19057a69ef305) |
+| 02  | Dépendance à la date  | Passe en semaine, échoue le week-end                    | Horloge réglée sur un samedi avec `page.clock` → 8,99 €        | `page.clock.setFixedTime` + test du cas week-end      | [4b36c3f](https://github.com/yosrReact/flaky-tests-playwright/commit/4b36c3f5ba4853b290a0444cd2dfbe0be76c8fb2) |
+| 03  | API externe           | Échoue quand dummyjson est en panne ou que ses données changent | `route.abort()` → message d'erreur à la place des produits | Mock de l'API avec `page.route` dans la fixture       | [58c6a92](https://github.com/yosrReact/flaky-tests-playwright/commit/58c6a92fa42bd1077fcbf5eb8c32164516b21630) |
+| 04  | Tests dépendants      | Échoue en parallèle ou quand le test est lancé seul     | Passe avec `--workers=1`, échoue avec `-g "B :"`               | Chaque test prépare son propre état via la fixture    | [6f3bd37](https://github.com/yosrReact/flaky-tests-playwright/commit/6f3bd3740580de210828537018d197eee9167287) |
 
-1. Detection on CI (retries, "flaky" status)
-2. Quarantine with a ticket (#1)
-3. Diagnosis with the trace viewer
-4. Fix, one commit per cause
-5. Validation with `--repeat-each=20`
-6. Quality gate hardened with `--fail-on-flaky-tests`
+## Démarche
+
+1. **Détection en CI** : retries, statut « flaky » dans le rapport, avertissement GitHub quand un test est flaky.
+2. **Quarantaine avec un ticket** : le test 04 B bloquait la CI, il a été tagué `@quarantine` et exclu du quality gate ([issue #1](https://github.com/yosrReact/flaky-tests-playwright/issues/1), [commit](https://github.com/yosrReact/flaky-tests-playwright/commit/44c3b4bf1cc7ae0e2794dd7117cf646cd809b353)).
+3. **Diagnostic avec le trace viewer** : traces récupérées depuis les artefacts GitHub Actions.
+4. **Correction**, un commit par cause.
+5. **Validation** avec `--repeat-each=20`.
+6. **Quality gate durci** avec `--fail-on-flaky-tests` : la CI refuse désormais toute nouvelle flakiness.
+
+## CI
+
+Le workflow [`.github/workflows/playwright.yml`](.github/workflows/playwright.yml) lance à chaque push et pull request :
+
+- la vérification TypeScript ;
+- les tests Playwright hors quarantaine, avec échec du job si un test échoue ou s'il est flaky ;
+- les tests en quarantaine, sans bloquer le job ;
+- l'envoi du rapport HTML et des traces en artefact.

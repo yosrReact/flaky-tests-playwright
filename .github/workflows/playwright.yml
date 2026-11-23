@@ -29,7 +29,13 @@ jobs:
 
       - name: Run Playwright tests
         run: npx playwright test --grep-invert @quarantine
-
+      - name: Warn on flaky tests
+        if: ${{ !cancelled() }}
+        run: |
+          FLAKY=$(jq '.stats.flaky' results.json)
+          if [ "$FLAKY" -gt 0 ]; then
+            echo "::warning::$FLAKY flaky test(s) detected, see the HTML report"
+          fi
       - name: Run quarantined tests (non-blocking)
         run: npx playwright test --grep @quarantine --reporter=list
         continue-on-error: true

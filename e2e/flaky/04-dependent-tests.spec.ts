@@ -21,15 +21,26 @@ test("A : ajouter le mascara au panier", async () => {
   await expect(page.getByRole("link", { name: /Panier/ })).toContainText("1");
 });
 
-test("B : le panier contient le mascara", async () => {
-  await page.getByRole("link", { name: /Panier/ }).click();
-  await expect(
-    page.getByRole("cell", {
-      name: "Essence Mascara Lash Princess",
-      exact: true,
-    }),
-  ).toBeVisible();
-});
+test(
+  "B : le panier contient le mascara",
+  {
+    tag: "@quarantine",
+    annotation: {
+      type: "issue",
+      description:
+        "https://github.com/yosrReact/flaky-tests-playwright/issues/1",
+    },
+  },
+  async () => {
+    await page.getByRole("link", { name: /Panier/ }).click();
+    await expect(
+      page.getByRole("cell", {
+        name: "Essence Mascara Lash Princess",
+        exact: true,
+      }),
+    ).toBeVisible();
+  },
+);
 
 test.afterAll(async () => {
   await page.close();

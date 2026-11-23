@@ -1,47 +1,30 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "../fixtures";
 
-let page: Page;
-// We don't use the loggedInPage fixture here: it gives each test a fresh page,
-// which is exactly the isolation we want to break.
-test.beforeAll(async ({ browser }) => {
-  page = await browser.newPage();
-  await page.goto("/login");
-  await page.getByLabel("Email").fill("demo@shop.test");
-  await page.getByLabel("Mot de passe").fill("demo1234");
-  await page.getByRole("button", { name: "Se connecter" }).click();
-  await expect(page).toHaveURL("/shop");
-});
+test.describe("Flaky 04 : tests dépendants", () => {
+  test("A : ajouter le mascara au panier", async ({ loggedInPage: page }) => {
+    await page
+      .getByRole("button", {
+        name: "Ajouter Essence Mascara Lash Princess au panier",
+      })
+      .click();
 
-test("A : ajouter le mascara au panier", async () => {
-  await page
-    .getByRole("button", {
-      name: "Ajouter Essence Mascara Lash Princess au panier",
-    })
-    .click();
-  await expect(page.getByRole("link", { name: /Panier/ })).toContainText("1");
-});
+    await expect(page.getByRole("link", { name: /Panier/ })).toContainText("1");
+  });
 
-test(
-  "B : le panier contient le mascara",
-  {
-    tag: "@quarantine",
-    annotation: {
-      type: "issue",
-      description:
-        "https://github.com/yosrReact/flaky-tests-playwright/issues/1",
-    },
-  },
-  async () => {
+  test("B : le panier contient le mascara", async ({ loggedInPage: page }) => {
+    // B prepares its own state instead of relying on A
+    await page
+      .getByRole("button", {
+        name: "Ajouter Essence Mascara Lash Princess au panier",
+      })
+      .click();
     await page.getByRole("link", { name: /Panier/ }).click();
+
     await expect(
       page.getByRole("cell", {
         name: "Essence Mascara Lash Princess",
         exact: true,
       }),
     ).toBeVisible();
-  },
-);
-
-test.afterAll(async () => {
-  await page.close();
+  });
 });

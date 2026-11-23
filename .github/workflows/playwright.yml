@@ -28,7 +28,7 @@ jobs:
         run: npm run typecheck
 
       - name: Run Playwright tests
-        run: npx playwright test --grep-invert @quarantine
+        run: npx playwright test --grep-invert @quarantine --fail-on-flaky-tests
       - name: Warn on flaky tests
         if: ${{ !cancelled() }}
         run: |
@@ -37,7 +37,7 @@ jobs:
             echo "::warning::$FLAKY flaky test(s) detected, see the HTML report"
           fi
       - name: Run quarantined tests (non-blocking)
-        run: npx playwright test --grep @quarantine --reporter=list
+        run: npx playwright test --grep @quarantine --reporter=list --pass-with-no-tests
         continue-on-error: true
 
       - name: Upload report
